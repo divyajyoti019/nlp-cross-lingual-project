@@ -1,0 +1,20 @@
+{
+  "domain": "Indian school education policy",
+  "snapshot_note": "The bundled starter passages are short curated summaries of the policy. For a larger study, ingest the full official documents and record the download date and checksum.",
+  "documents": [
+    {
+      "doc_id": "nep2020-en",
+      "title": "National Education Policy 2020 (English)",
+      "language": "en",
+      "url": "https://www.education.gov.in/sites/upload_files/mhrd/files/nep_update/National_Education_Policy_2020_en.pdf",
+      "publisher": "Ministry of Education, Government of India"
+    },
+    {
+      "doc_id": "nep2020-hi",
+      "title": "राष्ट्रीय शिक्षा नीति 2020 (Hindi)",
+      "language": "hi",
+      "url": "https://www.education.gov.in/sites/upload_files/mhrd/files/NEP_final_HINDI.pdf",
+      "publisher": "Ministry of Education, Government of India"
+    }
+  ]
+}
