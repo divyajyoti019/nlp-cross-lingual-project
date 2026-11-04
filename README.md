@@ -95,6 +95,8 @@ Results are written to outputs/evaluation/ as JSON summaries and CSV predictions
 
 Never tune thresholds or prompts on the test split. Report the development-calibrated threshold and include per-language and difficult-case results. The bundled QA set has 45 curated examples for software demonstration; the assignment recommends a larger 300-500 example research set, which should be built by adding domain documents and human-reviewed questions rather than duplicating templates.
 
+The current 33-example test snapshot, language-sliced retrieval results, and limitations are documented in [docs/benchmark-results.md](docs/benchmark-results.md). Treat these as baseline measurements on the bundled demo set, not as research-scale evidence.
+
 ## Project layout
 
     app.py
