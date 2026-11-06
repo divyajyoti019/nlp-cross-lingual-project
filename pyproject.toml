@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "indicrag-qa"
+version = "0.1.0"
+description = "Evidence-grounded cross-lingual question answering for Indic and code-mixed queries"
+readme = "README.md"
+requires-python = ">=3.11,<3.15"
+dependencies = [
+    "numpy>=1.26",
+    "scikit-learn>=1.4",
+    "sentence-transformers>=3.0",
+    "torch>=2.2",
+    "transformers>=4.45,<6",
+    "pypdf>=5.0",
+    "streamlit>=1.36",
+]
+
+[project.optional-dependencies]
+notebook = [
+    "pandas>=2.1",
+    "matplotlib>=3.8",
+    "ipykernel>=6.29",
+    "jupyterlab>=4.2",
+]
+
+[project.scripts]
+indicrag = "indicrag.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 100
+
+[tool.ruff]
+line-length = 100
