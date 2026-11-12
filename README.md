@@ -1,136 +1,223 @@
 # IndicRAG-QA
 
-Evidence-grounded cross-lingual question answering for English, Hindi, and Hindi-English code-mixed queries.
+IndicRAG-QA is a small research and demonstration project for answering questions about Indian school education policy in English, Hindi, and Hindi-English code-mixed text. It retrieves relevant policy passages, answers from that evidence, shows source citations, and can abstain when the evidence score is too low.
 
-The system retrieves passages from a small bilingual education-policy corpus, answers from the retrieved evidence, cites the supporting passage, and abstains when the top evidence score is below a configurable threshold. The starter documents are English and Hindi versions of India's National Education Policy 2020.
+The bundled corpus contains curated summaries of India's National Education Policy (NEP) 2020 in English and Hindi. It is a software demo corpus, not a complete policy archive or a research-scale benchmark.
 
-## Research design
+## What happens when you ask a question?
 
-The attached project brief asks for separate lexical, multilingual dense, and hybrid retrieval experiments; language-stratified evaluation; answerability handling; citations; and difficult-case analysis. This repository implements those components as a reproducible baseline.
+1. The question is searched against the policy passages.
+2. A retriever ranks passages using BM25, character TF-IDF, multilingual LaBSE embeddings, or a hybrid score.
+3. The top score is compared with an answerability threshold.
+4. If evidence is sufficient, the default answerer selects a sentence from the retrieved passages. The result includes citations and evidence excerpts. If evidence is weak, the system abstains.
+5. An optional local Ollama model can generate an answer from the retrieved passages.
 
-The four supplied papers inform the design in different ways:
+The default hybrid score is `alpha × lexical score + (1 − alpha) × dense score`; `alpha` is `0.55` by default. The lexical score uses the stronger of the normalized BM25 and character TF-IDF scores. LaBSE is loaded only for dense or hybrid retrieval.
 
-- Vaswani et al. introduce the Transformer and attention-based sequence modeling. This project uses pretrained attention-based encoders instead of training a Transformer from scratch.
-- Conneau et al. show the value and trade-offs of multilingual pretraining at scale. XLM-R motivates multilingual transfer and language-sliced reporting; the current retrieval model is LaBSE because the project needs sentence-level cross-lingual retrieval.
-- Feng et al. describe LaBSE's multilingual sentence-embedding and translation-ranking approach. LaBSE is the default dense retriever for English-Hindi passage matching.
-- Rahimi et al. show that transfer quality varies by source and target language. The project reports English, Hindi, and code-mixed results separately and retains difficult cases for review.
+## Get the project
 
-The raw XLM-R checkpoint is not used as a QA generator: it is a pretrained encoder, not an instruction-tuned answer model. If you add a reader or reranker later, fine-tune it on an appropriate multilingual QA or ranking dataset and compare it with the current baselines.
+Clone the public repository:
 
-## What is included
+```bash
+git clone https://github.com/divyajyoti019/nlp-cross-lingual-project.git
+cd nlp-cross-lingual-project
+```
 
-- PDF, TXT, and Markdown ingestion with page, section, document, and source metadata.
-- BM25 and character n-gram TF-IDF lexical baselines.
-- LaBSE dense retrieval for cross-lingual sentence similarity.
-- Weighted hybrid retrieval, with a tunable lexical weight.
-- Script and Hinglish-lexicon query-type detection.
-- Answerability gating, an extractive evidence-only answer baseline, and source citations.
-- Optional local Ollama generation for RAG and direct-answer ablations.
-- Evaluation of Recall@K, Precision@K, MRR, exact match, token F1, answerability accuracy/precision/recall/F1, language slices, and difficult cases.
-- Streamlit demo and a Jupyter research walkthrough.
+## Requirements
 
-## Quick start on macOS
+- Python 3.11–3.14 (Python 3.12 is a good default)
+- Git
+- Internet access for the first LaBSE model download when using dense or hybrid retrieval
+- VS Code is optional; the project also runs from a terminal
 
-Open this folder in VS Code. The workspace recommends the Microsoft Python, Pylance, and Jupyter extensions and selects .venv as its Python interpreter.
+Installing the Python dependencies also installs the notebook tools. The first install may take a few minutes because PyTorch and sentence-transformers are large packages.
 
-    python3 -m venv .venv
-    source .venv/bin/activate
-    python -m pip install --upgrade pip
-    python -m pip install -r requirements.txt
-    python -m ipykernel install --prefix .venv --name indicrag --display-name "Python (IndicRAG-QA)"
+## Install
 
-For Windows PowerShell, activate the environment with .venv\Scripts\Activate.ps1. The project supports Python 3.11-3.14; if a machine has trouble resolving ML packages, use Python 3.11 or 3.12.
+Run these commands from the repository root.
 
-Select **Python (IndicRAG-QA)** as the kernel for notebooks. Open notebooks/01_indicrag_demo.ipynb in VS Code or run jupyter lab.
+### macOS or Linux
 
-The repository includes recommended VS Code extensions for Python, Pylance, and Jupyter. To register the notebook kernel after installing requirements, run:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
 
-    python -m ipykernel install --prefix .venv --name indicrag --display-name "Python (IndicRAG-QA)"
+### Windows PowerShell
 
-## Run the application
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
 
-The lexical baselines work without downloading a model:
+If PowerShell blocks environment activation, use Command Prompt and run `.venv\Scripts\activate.bat`, then continue with the `python -m pip` commands above.
 
-    indicrag ask "What does NEP say about coding activities?" --method bm25
+## Run the browser app
 
-Dense or hybrid retrieval loads LaBSE the first time and may download model weights:
+Start the Streamlit demo from the repository root:
 
-    indicrag ask "NEP ke according coding activities kaunse school stage me start hoti hain?" --method hybrid
+```bash
+streamlit run app.py
+```
 
-Launch the browser demo:
+Streamlit prints a local URL to open in your browser. The website includes example questions in English, Hindi, and Hinglish, a guided question form, expandable source passages, retrieval settings, and separate tabs explaining the methods and project scope. In the sidebar, choose a retrieval method, number of passages, answerability threshold, and hybrid lexical weight.
 
-    streamlit run app.py
+For the first run without a model download, choose **bm25** or **tfidf**. The default **hybrid** method loads LaBSE the first time and downloads its weights. Dense retrieval needs an internet connection on that first run; later runs can use the cached model.
 
-The Streamlit app lets you choose the retrieval method, top-K, score threshold, and optional local answer generator. For evidence-sensitive use, review the returned source passage.
+## Use the command line
 
-## Add your own documents
+Ask a question with a lexical baseline:
 
-Put source PDFs, text files, or Markdown files in data/raw/ (this folder is ignored by Git), then ingest a document:
+```bash
+indicrag ask "What does NEP say about coding activities?" --method bm25
+```
 
-    indicrag ingest data/raw/your_policy.pdf --doc-id your-policy --title "Your policy title" --source-url "https://example.org/policy.pdf" --language en
+Use cross-lingual dense or hybrid retrieval (the first run downloads LaBSE):
 
-The generated passage file goes to data/processed/passages.jsonl, also ignored by Git. The CLI and app load it alongside the bundled sample passages. For mixed-language documents, use --language auto.
+```bash
+indicrag ask "NEP ke according coding activities kis school stage me shuru hoti hain?" --method hybrid
+indicrag ask "What does NEP say about coding activities?" --method dense
+```
 
-## Optional local answer generation
+Available methods:
 
-The default answerer returns a sentence selected from the retrieved evidence. To compare it with a generative RAG answer, install and start Ollama, pull a multilingual instruction model you are licensed to use, and set OLLAMA_MODEL. For example, the Ollama library provides qwen2.5:3b-instruct; check the model license and hardware requirements before using it.
+| Method | What it does | Downloads model weights? |
+| --- | --- | --- |
+| `bm25` | Finds passages by matching words | No |
+| `tfidf` | Compares character n-grams; can help with spelling and word-form variation | No |
+| `dense` | Uses multilingual LaBSE sentence embeddings to match meaning across languages | Yes, on first use |
+| `hybrid` | Combines lexical matching with LaBSE similarity | Yes, on first use |
 
-    export OLLAMA_MODEL=qwen2.5:3b-instruct
-    indicrag ask "Which grades have the bagless period?" --method hybrid --ollama
+Useful options for `indicrag ask`:
 
-For Windows PowerShell, set it with $env:OLLAMA_MODEL="qwen2.5:3b-instruct". No hosted API key is required. The --compare-direct evaluation option compares that model without retrieved evidence against the RAG answer.
+```text
+--top-k 5          Number of passages to retrieve
+--threshold 0.42   Minimum top-passage score to answer
+--alpha 0.55       Lexical weight for hybrid retrieval (0–1)
+--passages FILE    Use one JSONL passage file instead of the project corpus
+```
 
-## Evaluate
+The threshold is a decision setting, not a calibrated probability. Tune it on development data before evaluating on a held-out test set.
 
-Run retrieval and answerability evaluation with the threshold selected on the development split:
+## Evaluate the retrieval methods
 
-    indicrag evaluate --method bm25 --split test
-    indicrag evaluate --method tfidf --split test
-    indicrag evaluate --method dense --split test
-    indicrag evaluate --method hybrid --split test
+Run each method on the bundled test split:
 
-Results are written to outputs/evaluation/ as JSON summaries and CSV predictions. To run the optional direct-model comparison:
+```bash
+indicrag evaluate --method bm25 --split test
+indicrag evaluate --method tfidf --split test
+indicrag evaluate --method dense --split test
+indicrag evaluate --method hybrid --split test
+```
 
-    indicrag evaluate --method hybrid --split test --ollama --compare-direct
+The default evaluation calibrates the answerability threshold on the development split before scoring the test split. Results are written under `outputs/evaluation/` as a JSON summary and a CSV of per-question predictions. The output directory is ignored by Git.
 
-Never tune thresholds or prompts on the test split. Report the development-calibrated threshold and include per-language and difficult-case results. The bundled QA set has 45 curated examples for software demonstration; the assignment recommends a larger 300-500 example research set, which should be built by adding domain documents and human-reviewed questions rather than duplicating templates.
+The evaluation set has 45 curated questions: 12 development and 33 test examples. It reports answerability, answer quality, retrieval metrics, language slices, and difficult cases. Use the development split to choose thresholds or retrieval settings; keep the test split for final comparisons. Read [the evaluation protocol](docs/evaluation.md) and [the current benchmark snapshot](docs/benchmark-results.md) before interpreting results. These small-set scores are a reproducible software baseline, not evidence of performance on a broad real-world benchmark.
 
-The current 33-example test snapshot, language-sliced retrieval results, and limitations are documented in [docs/benchmark-results.md](docs/benchmark-results.md). Treat these as baseline measurements on the bundled demo set, not as research-scale evidence.
+## Use VS Code and Jupyter
 
-## Project layout
+1. Open the repository folder in VS Code.
+2. Install the recommended **Python**, **Pylance**, and **Jupyter** extensions when VS Code offers them.
+3. Open the Command Palette and choose **Python: Select Interpreter**. Select the Python executable inside this repository's `.venv` folder.
+4. To register the notebook kernel, run:
 
-    app.py
-    src/indicrag/         Ingestion, retrieval, answer generation, evaluation, and CLI
-    data/sample/          Small bilingual starter passage collection
-    data/eval/            Development and test question set
-    data/sources.json     Source URLs and provenance
-    notebooks/            Jupyter research walkthrough
-    docs/                 Architecture, evaluation protocol, and data notes
-    legacy/               Previous NLP Lab 9 solution, preserved for reference
+   ```bash
+   python -m ipykernel install --prefix .venv --name indicrag --display-name "Python (IndicRAG-QA)"
+   ```
 
-## GitHub workflow
+5. Open `notebooks/01_indicrag_demo.ipynb` and select **Python (IndicRAG-QA)** as its kernel.
 
-The project remote is [divyajyoti019/nlp-cross-lingual-project](https://github.com/divyajyoti019/nlp-cross-lingual-project). To work on a separate change, create a branch, commit your files, and push that branch:
+You can also run JupyterLab from the activated environment and repository root:
 
-    git switch -c feature/short-description
-    git add .
-    git commit -m "Describe the change"
-    git push -u origin feature/short-description
+```bash
+jupyter lab
+```
 
-Then open a pull request on GitHub and review the changed files and generated evaluation outputs before merging. Do not commit `.venv/`, source PDFs, generated passages, model weights, or evaluation outputs; the repository `.gitignore` excludes these local files.
+The notebook walks through loading passages, comparing retrieval methods, inspecting citations, and evaluating on the development split.
 
-## Limitations
+## Add your own policy documents
 
-- The bundled passage and QA sets are a small demonstration set, not a statistically powered benchmark.
-- Romanized Hinglish language detection uses a small marker list; report it as a heuristic and manually inspect misclassified queries.
-- Dense retrieval quality and answerability thresholds must be calibrated on your own held-out documents and language mix.
-- Extractive responses are deliberately conservative. Optional LLM answers can still be wrong; evaluate them against the evidence and preserve citations.
-- Policy passages are summaries with links to official documents. For a final research evaluation, ingest the full source PDFs and annotate evidence passages directly.
+The ingestion command supports text-based PDF, TXT, and Markdown files. It extracts text, splits it into passages, and records document metadata. Scanned PDFs need OCR before ingestion; OCR is not included.
 
-## References
+1. Put your files in `data/raw/`. That folder is ignored by Git so source documents are not committed accidentally.
+2. Ingest one file (quote paths that contain spaces):
 
-1. Vaswani et al. (2017). Attention Is All You Need. NeurIPS. https://arxiv.org/abs/1706.03762
-2. Conneau et al. (2020). Unsupervised Cross-lingual Representation Learning at Scale. ACL. https://aclanthology.org/2020.acl-main.747/
-3. Feng et al. (2022). Language-agnostic BERT Sentence Embedding. ACL. https://aclanthology.org/2022.acl-long.62/
-4. Rahimi et al. (2019). Massively Multilingual Transfer for NER. ACL. https://aclanthology.org/P19-1015/
-5. Ministry of Education, Government of India. National Education Policy 2020 (English and Hindi). Source URLs are recorded in data/sources.json.
+   ```bash
+   indicrag ingest "data/raw/your_policy.pdf" \
+     --doc-id your-policy \
+     --title "Your policy title" \
+     --source-url "https://example.org/your-policy.pdf" \
+     --language auto
+   ```
+
+3. The default output is `data/processed/passages.jsonl`. The CLI and browser app load that file along with the bundled sample passages.
+
+For a folder, pass the folder path to `indicrag ingest`; all supported files beneath it are processed. You can adjust passage length with `--max-chars` and `--overlap-chars`. Review the generated passages and metadata before using them in an evaluation.
+
+Each passage is a JSON object on its own line with fields such as `passage_id`, `doc_id`, `title`, `source_url`, `language`, `section`, `text`, and `page`. Keep passage IDs stable when creating QA annotations.
+
+## Optional: use a local Ollama model
+
+The project works without Ollama. To try local generation, install Ollama separately, download a chat model that supports your languages, and make sure the Ollama service is running. Then set the model name in the same terminal before starting the app or CLI.
+
+macOS or Linux:
+
+```bash
+export OLLAMA_MODEL="your-installed-model-name"
+export OLLAMA_BASE_URL="http://localhost:11434"
+indicrag ask "Which grades have the bagless period?" --method hybrid --ollama
+```
+
+Windows PowerShell:
+
+```powershell
+$env:OLLAMA_MODEL = "your-installed-model-name"
+$env:OLLAMA_BASE_URL = "http://localhost:11434"
+indicrag ask "Which grades have the bagless period?" --method hybrid --ollama
+```
+
+The generator receives the retrieved passages as evidence. Check its response against the citations; local generation can still produce unsupported text. `.env.example` documents the optional variables, but the application reads them from the process environment and does not automatically load a `.env` file.
+
+## Project structure
+
+```text
+app.py                         Streamlit web app
+src/indicrag/                  Ingestion, retrieval, answering, evaluation, and CLI
+data/sample/passages.jsonl     Bundled English/Hindi starter passages
+data/eval/qa.jsonl             Curated development/test questions
+data/sources.json              Source document provenance
+notebooks/                     Jupyter research walkthrough
+docs/                          Architecture, evaluation, data card, and error analysis
+legacy/                        Earlier NLP lab files, kept for reference
+```
+
+## Research background
+
+The supplied papers inform the project design, but this repository does not reimplement each paper:
+
+- Vaswani et al. (2017), [Attention Is All You Need](https://arxiv.org/abs/1706.03762): introduces the Transformer architecture. This project uses pretrained encoders rather than training a Transformer from scratch.
+- Conneau et al. (2020), [Unsupervised Cross-lingual Representation Learning at Scale](https://aclanthology.org/2020.acl-main.747/): motivates multilingual pretraining and language-specific evaluation. XLM-R is not the project's answer generator.
+- Feng et al. (2022), [Language-agnostic BERT Sentence Embedding](https://aclanthology.org/2022.acl-long.62/): motivates LaBSE for cross-lingual sentence retrieval.
+- Rahimi et al. (2019), [Massively Multilingual Transfer for NER](https://aclanthology.org/P19-1015/): motivates checking transfer quality separately by language.
+
+## Troubleshooting
+
+- **`indicrag: command not found`**: activate `.venv` and install dependencies with `python -m pip install -r requirements.txt`.
+- **`ModuleNotFoundError: indicrag`**: run commands from the repository root and confirm the active Python is the `.venv` interpreter.
+- **LaBSE download fails**: use `--method bm25` or `--method tfidf` while offline; dense and hybrid retrieval need the model weights on first use.
+- **Ollama is not reachable**: start the Ollama service, check that `OLLAMA_BASE_URL` points to it, and confirm the selected model is installed.
+- **No answer or an unexpected abstention**: inspect the retrieved passages, retrieval method, and threshold. A low score means the current corpus may not contain useful evidence.
+
+## More project notes
+
+- [Architecture](docs/architecture.md)
+- [Data card and provenance](docs/data-card.md)
+- [Evaluation protocol](docs/evaluation.md)
+- [Benchmark results and limits](docs/benchmark-results.md)
+- [Difficult-case error analysis](docs/error-analysis.md)
+
+The original policy source URLs are recorded in [`data/sources.json`](data/sources.json). For research-grade conclusions, ingest and cite the full source documents, expand the question set, and have the evidence and answer annotations reviewed by people fluent in the target languages and familiar with the policy domain.
