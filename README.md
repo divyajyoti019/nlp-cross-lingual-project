@@ -64,9 +64,21 @@ Start the Streamlit demo from the repository root:
 streamlit run app.py
 ```
 
-Streamlit prints a local URL to open in your browser. The website includes example questions in English, Hindi, and Hinglish, a guided question form, expandable source passages, retrieval settings, and separate tabs explaining the methods and project scope. In the sidebar, choose a retrieval method, number of passages, answerability threshold, and hybrid lexical weight.
+Streamlit prints a local URL to open in your browser. The website includes English, Hindi, and Hinglish prompts, answer citations, an interactive retrieval-method comparison, a searchable corpus explorer, and a document upload flow. In the sidebar, choose a retrieval method, corpus, number of passages, answerability threshold, and hybrid lexical weight.
 
 For the first run without a model download, choose **bm25** or **tfidf**. The default **hybrid** method loads LaBSE the first time and downloads its weights. Dense retrieval needs an internet connection on that first run; later runs can use the cached model.
+
+## Build the expanded official corpus
+
+To expand the starter summaries, run:
+
+```bash
+python scripts/build_extended_corpus.py
+```
+
+The script downloads the full NEP 2020 PDF in English and Hindi and the UDISE+ 2024–25 and 2025–26 reports in NEP structure, then indexes them into passages. It writes PDFs to `data/raw/` and passages to `data/processed/passages.jsonl`; both folders are Git-ignored. Restart or rerun the app and enable **Use expanded corpus** in the sidebar to search the additional documents. Rerun the script safely; use `--refresh` to download fresh source copies.
+
+The UDISE+ report extends the corpus with school statistics. For a much larger general multilingual QA experiment, AI4Bharat's [Indic-RAG-Suite](https://huggingface.co/datasets/ai4bharat/Indic-Rag-Suite) lists 21.4 million samples in 18 Indian languages and English (about 8.82 GB). Its Wikipedia-derived generated QA data has a broader scope than education policy, so it is not downloaded by default.
 
 ## Use the command line
 
@@ -215,6 +227,7 @@ The supplied papers inform the project design, but this repository does not reim
 ## More project notes
 
 - [Architecture](docs/architecture.md)
+- [Project report](docs/project-report.md)
 - [Data card and provenance](docs/data-card.md)
 - [Evaluation protocol](docs/evaluation.md)
 - [Benchmark results and limits](docs/benchmark-results.md)

@@ -1,20 +1,48 @@
 {
   "domain": "Indian school education policy",
-  "snapshot_note": "The bundled starter passages are short curated summaries of the policy. For a larger study, ingest the full official documents and record the download date and checksum.",
+  "snapshot_note": "The starter corpus contains curated NEP summaries. The optional expanded corpus is built from public full-text NEP 2020 documents in English and Hindi plus UDISE+ NEP-structure reports for 2024-25 and 2025-26. The build script and each passage retain the original source URL.",
   "documents": [
     {
       "doc_id": "nep2020-en",
-      "title": "National Education Policy 2020 (English)",
+      "title": "National Education Policy 2020 (English; starter passages)",
       "language": "en",
-      "url": "https://www.education.gov.in/sites/upload_files/mhrd/files/nep_update/National_Education_Policy_2020_en.pdf",
-      "publisher": "Ministry of Education, Government of India"
+      "url": "https://scert.delhi.gov.in/sites/default/files/SCERT/NEP%202020/Documents/nep_final_english_0.pdf",
+      "publisher": "Ministry of Education, Government of India (hosted by SCERT Delhi)"
     },
     {
       "doc_id": "nep2020-hi",
-      "title": "राष्ट्रीय शिक्षा नीति 2020 (Hindi)",
+      "title": "राष्ट्रीय शिक्षा नीति 2020 (Hindi; starter passages)",
       "language": "hi",
-      "url": "https://www.education.gov.in/sites/upload_files/mhrd/files/NEP_final_HINDI.pdf",
-      "publisher": "Ministry of Education, Government of India"
+      "url": "https://scert.delhi.gov.in/sites/default/files/SCERT/NEP%202020/Documents/nep_final_hindi_0.pdf",
+      "publisher": "Ministry of Education, Government of India (hosted by SCERT Delhi)"
+    },
+    {
+      "doc_id": "nep2020-full-en",
+      "title": "National Education Policy 2020 (English full text)",
+      "language": "en",
+      "url": "https://scert.delhi.gov.in/sites/default/files/SCERT/NEP%202020/Documents/nep_final_english_0.pdf",
+      "publisher": "Ministry of Education, Government of India (hosted by SCERT Delhi)"
+    },
+    {
+      "doc_id": "nep2020-full-hi",
+      "title": "राष्ट्रीय शिक्षा नीति 2020 (Hindi full text)",
+      "language": "hi",
+      "url": "https://scert.delhi.gov.in/sites/default/files/SCERT/NEP%202020/Documents/nep_final_hindi_0.pdf",
+      "publisher": "Ministry of Education, Government of India (hosted by SCERT Delhi)"
+    },
+    {
+      "doc_id": "udise-2024-25-nep",
+      "title": "UDISE+ Report 2024-25 — NEP Structure",
+      "language": "en",
+      "url": "https://dashboard.udiseplus.gov.in/report2025/static/media/UDISE%2B2024_25_Booklet_nep.ea09e672a163f92d9cfe.pdf",
+      "publisher": "Department of School Education & Literacy, Ministry of Education, Government of India"
+    },
+    {
+      "doc_id": "udise-2025-26-nep",
+      "title": "UDISE+ Report 2025-26 — NEP Structure",
+      "language": "en",
+      "url": "https://dashboard.udiseplus.gov.in/report2026/static/media/UDISE%2B2025_26_Booklet_nep.94ceae1e8c2210549d21.pdf",
+      "publisher": "Department of School Education & Literacy, Ministry of Education, Government of India"
     }
   ]
 }

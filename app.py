@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import re
 
 import streamlit as st
 
 from indicrag.generation import OllamaChatGenerator
-from indicrag.ingest import load_passages
+from indicrag.ingest import ingest_file, load_passages, write_passages
 from indicrag.pipeline import IndicRAG
 from indicrag.retrieval import DEFAULT_EMBEDDING_MODEL
 
@@ -27,56 +28,58 @@ st.markdown(
     """
     <style>
       :root {
-        --ink: #142b3a;
-        --muted: #5f7480;
-        --teal: #087f83;
-        --teal-dark: #075f66;
-        --sand: #f4f0e8;
-        --line: #dce5e4;
+        --ink: #172d35;
+        --muted: #667a7d;
+        --teal: #087f78;
+        --teal-dark: #075b58;
+        --line: #dce7e3;
       }
       [data-testid="stAppViewContainer"] {
-        background: linear-gradient(180deg, #f7faf9 0%, #ffffff 340px);
+        background: #f6f8f6;
       }
       [data-testid="stMainBlockContainer"] {
-        max-width: 1180px;
-        padding-top: 2rem;
+        max-width: 1280px;
+        padding-top: 1.5rem;
         padding-bottom: 3rem;
       }
       [data-testid="stSidebar"] {
-        background: #f2f6f5;
+        background: #eef3f0;
         border-right: 1px solid var(--line);
       }
       .hero {
-        padding: 2.1rem 2.25rem;
-        border: 1px solid #d7e7e3;
-        border-radius: 24px;
-        background:
-          radial-gradient(circle at 92% 15%, rgba(255,255,255,.72), transparent 27%),
-          linear-gradient(120deg, #e6f3ef 0%, #f7f1e7 100%);
-        box-shadow: 0 14px 42px rgba(20, 43, 58, .06);
-        margin-bottom: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        padding: 2.6rem 2.8rem;
+        border: 1px solid #d6e5dc;
+        border-radius: 26px;
+        background: linear-gradient(115deg, #e5f0e9 0%, #f2f2e8 62%, #f5ece0 100%);
+        box-shadow: 0 18px 50px rgba(23, 45, 53, .07);
+        margin: .3rem 0 1.5rem 0;
       }
+      .hero:after { content: "अ"; position: absolute; right: 5%; top: -3.6rem; color: rgba(8,127,120,.07); font-size: 18rem; font-weight: 800; line-height: 1; pointer-events: none; }
       .hero-kicker, .section-kicker {
         color: var(--teal-dark);
         font-size: .76rem;
         font-weight: 750;
-        letter-spacing: .12em;
+        letter-spacing: .13em;
         text-transform: uppercase;
         margin-bottom: .55rem;
       }
       .hero h1 {
         color: var(--ink);
-        font-size: clamp(2rem, 4vw, 3.25rem);
+        font-size: clamp(2rem, 4vw, 3.45rem);
         line-height: 1.08;
         letter-spacing: -.035em;
-        margin: 0 0 .7rem 0;
+        margin: 0 0 .8rem 0;
+        position: relative; z-index: 1;
       }
       .hero p {
         color: #425d68;
         font-size: 1.05rem;
         line-height: 1.6;
-        max-width: 780px;
+        max-width: 720px;
         margin: 0;
+        position: relative; z-index: 1;
       }
       .project-mark {
         color: var(--ink);
@@ -99,6 +102,8 @@ st.markdown(
         font-size: .9rem;
         line-height: 1.5;
       }
+      .trust-strip { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: 1.25rem; position: relative; z-index: 1; }
+      .trust-strip span { border: 1px solid rgba(8,91,88,.16); border-radius: 999px; padding: .35rem .7rem; background: rgba(255,255,255,.55); color: #345b58; font-size: .78rem; font-weight: 650; }
       div.stButton > button[kind="primary"],
       div.stFormSubmitButton > button[kind="primary"] {
         background: var(--teal);
@@ -115,18 +120,22 @@ st.markdown(
         background: rgba(255,255,255,.8);
       }
       div[data-testid="stMetric"] {
-        background: #f5f8f7;
+        background: #f2f6f4;
         border: 1px solid var(--line);
         border-radius: 14px;
         padding: .8rem 1rem;
       }
+      div[data-testid="stTabs"] button { font-weight: 650; }
+      div[data-testid="stTabs"] [data-baseweb="tab-list"] { gap: 1.2rem; }
+      div[data-testid="stForm"] { background: #fff; padding: 1rem 1.1rem .8rem; border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 8px 24px rgba(23,45,53,.035); }
       @media (max-width: 700px) {
         [data-testid="stMainBlockContainer"] {
           padding-top: 1rem;
           padding-left: 1rem;
           padding-right: 1rem;
         }
-        .hero { padding: 1.5rem; border-radius: 18px; }
+        .hero { padding: 1.55rem; border-radius: 18px; }
+        .hero:after { right: -1.5rem; top: 0; font-size: 10rem; }
       }
     </style>
     """,
@@ -134,11 +143,25 @@ st.markdown(
 )
 
 
-@st.cache_resource(show_spinner="Preparing the passage index…")
-def build_engine(embedding_model: str, alpha: float) -> IndicRAG:
+def load_corpus(include_extended: bool = False):
     passages = load_passages(SAMPLE_PATH)
-    if EXTRA_PATH.exists():
+    if include_extended and EXTRA_PATH.exists():
         passages.extend(load_passages(EXTRA_PATH))
+    return passages
+
+
+def corpus_stamp(include_extended: bool) -> str:
+    if not include_extended or not EXTRA_PATH.exists():
+        return "starter"
+    stat = EXTRA_PATH.stat()
+    return f"{stat.st_mtime_ns}:{stat.st_size}"
+
+
+@st.cache_resource(show_spinner="Preparing the passage index…")
+def build_engine(
+    embedding_model: str, alpha: float, include_extended: bool, data_version: str
+) -> IndicRAG:
+    passages = load_corpus(include_extended)
     return IndicRAG(passages, embedding_model=embedding_model, alpha=alpha)
 
 
@@ -151,7 +174,8 @@ with st.sidebar:
         '<div class="project-mark"><span>IR</span>IndicRAG-QA</div>',
         unsafe_allow_html=True,
     )
-    st.markdown("### Search settings")
+    st.markdown("### Retrieval controls")
+    st.caption("Tune how policy passages are found. Settings apply to your next search.")
     method_label = st.selectbox(
         "Retrieval method",
         ["Hybrid · recommended", "BM25 · keyword", "Character TF-IDF", "LaBSE · multilingual"],
@@ -193,6 +217,13 @@ with st.sidebar:
     )
     if use_ollama:
         st.caption("Set `OLLAMA_MODEL` in the environment and start Ollama before searching.")
+    include_extended = st.toggle(
+        "Use expanded corpus",
+        value=EXTRA_PATH.exists(),
+        help="Includes the official full-text documents or any passages you add in the Corpus tab.",
+    )
+    corpus_total = len(load_corpus(include_extended))
+    st.caption(f"Searching **{corpus_total:,} passages**")
     st.divider()
     st.markdown(
         '<div class="small-note"><b>First dense search</b><br>'
@@ -205,19 +236,22 @@ with st.sidebar:
 st.markdown(
     """
     <section class="hero">
-      <div class="hero-kicker">A multilingual policy research demo</div>
-      <h1>Find policy answers<br>with evidence you can inspect.</h1>
-      <p>Ask about India’s National Education Policy 2020 in English, Hindi, or Hinglish.<br>
-      IndicRAG-QA retrieves relevant passages, gives a concise answer, and shows the source text.</p>
+      <div class="hero-kicker">IndicRAG-QA &nbsp;·&nbsp; Research workspace</div>
+      <h1>Explore policy.<br>Follow the evidence.</h1>
+      <p>Ask about India’s National Education Policy 2020 in English, Hindi, or Hinglish. Get a concise response grounded in passages you can inspect.</p>
+      <div class="trust-strip"><span>English · हिन्दी · Hinglish</span><span>Evidence-linked answers</span><span>Abstains when evidence is weak</span></div>
     </section>
     """,
     unsafe_allow_html=True,
 )
 
-ask_tab, method_tab, about_tab = st.tabs(["💬 Ask a question", "🧭 How it works", "📘 Project notes"])
+ask_tab, compare_tab, corpus_tab, about_tab = st.tabs(
+    ["💬 Ask", "⚖️ Compare methods", "🗂️ Explore corpus", "📘 About"]
+)
 
 with ask_tab:
-    st.markdown('<div class="section-kicker">Try a sample question</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-kicker">Start with a question</div>', unsafe_allow_html=True)
+    st.caption("Choose a prompt to get started, or write a question in your own words.")
     examples = [
         ("English", "At what school stage are coding activities introduced?"),
         ("हिन्दी", "कोडिंग गतिविधियाँ किस चरण में शुरू की जाती हैं?"),
@@ -243,7 +277,7 @@ with ask_tab:
             help="Questions can be written in English, Hindi, or Hindi-English code-mixed text.",
         )
         submitted = st.form_submit_button(
-            "Search policy evidence",
+            "Find an answer and its sources  →",
             type="primary",
             use_container_width=True,
         )
@@ -256,7 +290,9 @@ with ask_tab:
             st.session_state["last_result"] = None
             st.session_state["last_error"] = None
             try:
-                engine = build_engine(model_name.strip(), alpha)
+                engine = build_engine(
+                    model_name.strip(), alpha, include_extended, corpus_stamp(include_extended)
+                )
                 if use_ollama:
                     engine.ollama = OllamaChatGenerator(os.getenv("OLLAMA_MODEL"))
                 with st.spinner("Searching the policy passages…"):
@@ -287,7 +323,7 @@ with ask_tab:
             st.metric("Top match", f"{result['confidence']:.3f}")
             st.caption(f"Query type: **{result['query_language']}**")
 
-        st.markdown("### Retrieved evidence")
+        st.markdown("### Evidence used")
         st.caption(
             f"Method: {result['retrieval_method']} · "
             f"Answerability cutoff: {result['threshold']:.2f}"
@@ -315,52 +351,173 @@ with ask_tab:
             st.info("No passages were retrieved for this question.")
 
     st.markdown(
-        '<p class="small-note">This is a research demo. Check source passages before relying on an answer; '
-        "the bundled corpus contains curated NEP summaries, not the full policy document.</p>",
+        '<p class="small-note">Research demo: check the linked source passages before relying on an answer. '
+        "The starter collection contains curated NEP summaries; the expanded collection adds official full texts.</p>",
         unsafe_allow_html=True,
     )
 
-with method_tab:
-    st.markdown('<div class="section-kicker">The retrieval options</div>', unsafe_allow_html=True)
-    st.markdown("### One question, four ways to find evidence")
-    method_columns = st.columns(4)
-    method_cards = [
-        ("BM25", "Keyword matching", "A fast baseline for questions that use the same words as the policy passage."),
-        ("Character TF-IDF", "Spelling-aware matching", "Compares short character patterns and can help with spelling and word-form differences."),
-        ("LaBSE", "Cross-language meaning", "Uses multilingual sentence embeddings to connect related English and Hindi passages."),
-        ("Hybrid", "Combined retrieval", "Blends lexical evidence with LaBSE similarity; adjust the weight in the sidebar."),
-    ]
-    for column, (name, short, detail) in zip(method_columns, method_cards):
-        with column:
-            st.markdown(f"#### {name}")
-            st.caption(short)
-            st.write(detail)
-
-    st.markdown("### Answering flow")
-    st.markdown(
-        "**Question → passage ranking → answerability check → answer and source passages.** "
-        "The default answerer selects a sentence from retrieved text. A local Ollama model is optional; "
-        "it receives the retrieved passages as evidence."
+with compare_tab:
+    st.markdown('<div class="section-kicker">Experiment with retrieval</div>', unsafe_allow_html=True)
+    st.markdown("### Same question, different ranking")
+    compare_question = st.text_input(
+        "Question to compare",
+        value=st.session_state.get("question_input", ""),
+        key="compare_question",
+        placeholder="Ask about a policy topic…",
     )
-    st.info("Dense and Hybrid retrieval download LaBSE the first time they are used. BM25 and TF-IDF work without model weights.")
+    method_options = {
+        "BM25 · keywords": "bm25",
+        "Character TF-IDF": "tfidf",
+        "LaBSE · multilingual": "dense",
+        "Hybrid": "hybrid",
+    }
+    compare_labels = st.multiselect(
+        "Methods",
+        list(method_options),
+        default=["BM25 · keywords", "Character TF-IDF", "Hybrid"],
+    )
+    if st.button("Compare rankings", type="primary", disabled=not compare_question.strip() or not compare_labels):
+        try:
+            engine = build_engine(
+                model_name.strip(), alpha, include_extended, corpus_stamp(include_extended)
+            )
+            compared = {}
+            with st.spinner("Running each retriever over the selected corpus…"):
+                for label in compare_labels:
+                    compared[label] = engine.retrieve(
+                        compare_question, method=method_options[label], top_k=top_k
+                    )
+            st.session_state["comparison_results"] = compared
+            st.session_state["comparison_query"] = compare_question
+        except Exception as exc:
+            st.error(str(exc))
+
+    compared = st.session_state.get("comparison_results")
+    if compared:
+        st.caption(f"Question: {st.session_state.get('comparison_query', '')}")
+        summary_rows = []
+        score_chart = []
+        for label, hits in compared.items():
+            if hits:
+                score_chart.append({"Method": label, "Top score": hits[0].score})
+                summary_rows.append({
+                    "Method": label,
+                    "Top score": round(hits[0].score, 3),
+                    "Top source": hits[0].passage.title,
+                    "Section": hits[0].passage.section,
+                })
+        if summary_rows:
+            st.dataframe(summary_rows, hide_index=True, use_container_width=True)
+            with st.expander("Compare top-match scores"):
+                st.bar_chart(score_chart, x="Method", y="Top score", horizontal=True)
+        for label, hits in compared.items():
+            with st.expander(f"{label} · {len(hits)} passages"):
+                for hit in hits:
+                    p = hit.passage
+                    st.markdown(f"**{hit.rank}. {p.title}** · score `{hit.score:.3f}`")
+                    if p.section:
+                        st.caption(p.section)
+                    st.write(p.text)
+                    st.divider()
+    st.info("BM25 and TF-IDF run locally without model downloads. Dense and Hybrid use LaBSE and may download its weights on first use.")
+
+with corpus_tab:
+    st.markdown('<div class="section-kicker">Inspect and grow the collection</div>', unsafe_allow_html=True)
+    st.markdown("### Education policy library")
+    st.caption("Filter the passages that the selected corpus makes searchable, or add a policy document of your own.")
+    if message := st.session_state.pop("corpus_notice", None):
+        st.success(message)
+
+    corpus_passages = load_corpus(include_extended)
+    doc_titles = sorted({p.title for p in corpus_passages})
+    doc_languages = sorted({p.language for p in corpus_passages})
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Passages", f"{len(corpus_passages):,}")
+    m2.metric("Documents", len(doc_titles))
+    m3.metric("Languages", len(doc_languages))
+
+    filter_columns = st.columns([1, 1, 2])
+    chosen_language = filter_columns[0].selectbox("Language", ["All", *doc_languages])
+    chosen_title = filter_columns[1].selectbox("Document", ["All", *doc_titles])
+    search_text = filter_columns[2].text_input("Find words in passages", placeholder="e.g. foundational literacy")
+    filtered = [
+        p for p in corpus_passages
+        if (chosen_language == "All" or p.language == chosen_language)
+        and (chosen_title == "All" or p.title == chosen_title)
+        and (not search_text.strip() or search_text.casefold() in p.text.casefold())
+    ]
+    st.caption(f"Showing {len(filtered):,} matching passages")
+    page_size = 10
+    page_count = max(1, (len(filtered) + page_size - 1) // page_size)
+    page = st.number_input("Page", min_value=1, max_value=page_count, value=1, step=1)
+    start = (int(page) - 1) * page_size
+    for p in filtered[start : start + page_size]:
+        heading = f"{p.title} · {p.language}"
+        if p.section:
+            heading += f" · {p.section}"
+        with st.expander(heading):
+            st.write(p.text)
+            st.caption(f"Passage `{p.passage_id}`" + (f" · Page {p.page}" if p.page else ""))
+            if p.source_url:
+                st.link_button("Open source", p.source_url)
+
+    st.markdown("#### Add a source document")
+    st.caption("Upload a text-based PDF, TXT, or Markdown file. It will be segmented into searchable passages locally.")
+    upload = st.file_uploader("Choose a policy document", type=["pdf", "txt", "md"], key="corpus_upload")
+    if upload and st.button("Index document", type="primary"):
+        try:
+            safe_name = Path(upload.name).name
+            raw_dir = ROOT / "data" / "raw"
+            raw_dir.mkdir(parents=True, exist_ok=True)
+            source_path = raw_dir / safe_name
+            source_path.write_bytes(upload.getvalue())
+            doc_id = re.sub(r"[^a-zA-Z0-9_-]+", "-", Path(safe_name).stem).strip("-").lower()
+            new_passages = ingest_file(source_path, doc_id=doc_id, title=Path(safe_name).stem, language="auto")
+            existing = load_passages(EXTRA_PATH) if EXTRA_PATH.exists() else []
+            existing = [p for p in existing if p.doc_id != doc_id]
+            write_passages([*existing, *new_passages], EXTRA_PATH)
+            st.cache_resource.clear()
+            st.session_state["corpus_notice"] = (
+                f"Indexed {len(new_passages):,} passages from {safe_name}. "
+                "Enable the expanded corpus in the sidebar to search it."
+            )
+            st.rerun()
+        except Exception as exc:
+            st.error(f"Could not index document: {exc}")
 
 with about_tab:
     st.markdown('<div class="section-kicker">About this project</div>', unsafe_allow_html=True)
-    st.markdown("### A small, inspectable cross-lingual QA baseline")
+    st.markdown("### Cross-lingual education research, with inspectable evidence")
     st.write(
         "IndicRAG-QA explores whether English, Hindi, and code-mixed questions can retrieve "
         "useful evidence from a bilingual education-policy corpus. It is designed for comparison "
         "and error analysis, not as a production policy-advice service."
     )
+    sample_count = len(load_passages(SAMPLE_PATH))
+    expanded_count = len(load_passages(EXTRA_PATH)) if EXTRA_PATH.exists() else 0
     metric_columns = st.columns(3)
-    metric_columns[0].metric("Starter passages", "30")
-    metric_columns[1].metric("Curated questions", "45")
-    metric_columns[2].metric("Question languages", "3")
-    st.markdown("### What the results mean")
+    metric_columns[0].metric("Starter passages", f"{sample_count:,}")
+    metric_columns[1].metric("Expanded passages", f"{expanded_count:,}")
+    metric_columns[2].metric("Curated evaluation questions", "45")
+    st.markdown("### Expanded education sources")
     st.write(
-        "The bundled data is intentionally small: 12 development questions and 33 test questions. "
-        "Use it to reproduce the software baseline and inspect errors. Expand and independently "
-        "review the data before making broad performance claims."
+        "Run `python scripts/build_extended_corpus.py` to download and index the complete NEP 2020 "
+        "documents in English and Hindi plus the UDISE+ 2024–25 and 2025–26 NEP-structure reports. "
+        "This adds recent school statistics to the policy text. The source PDFs are kept in the ignored "
+        "`data/raw/` folder; generated passages are kept in `data/processed/`."
+    )
+    st.markdown("### Another large multilingual QA dataset")
+    st.write(
+        "AI4Bharat’s Indic-RAG-Suite lists 21.4 million samples across 18 Indian languages and English, "
+        "with an 8.82 GB download. It is based on Wikipedia and generated QA pairs, so it is useful for "
+        "multilingual retrieval experiments but has a different scope from official education policy."
+    )
+    st.link_button("Open Indic-RAG-Suite dataset", "https://huggingface.co/datasets/ai4bharat/Indic-Rag-Suite")
+    st.markdown("### Evaluation notes")
+    st.write(
+        "The 45 evaluation questions remain a small curated set (12 development and 33 test examples). "
+        "Use them to reproduce the software baseline and inspect errors; do not treat them as broad "
+        "real-world performance evidence."
     )
     st.markdown("### Included in the repository")
     st.markdown(
@@ -369,7 +526,7 @@ with about_tab:
         "- BM25, character TF-IDF, LaBSE, and hybrid retrieval\n"
         "- Evaluation protocol, benchmark snapshot, data card, and research notebook"
     )
-    st.caption("Primary starter sources: the English and Hindi editions of India’s National Education Policy 2020.")
+    st.caption("The expanded corpus follows official source URLs documented in `data/sources.json`.")
 
 st.markdown("---")
 st.caption("IndicRAG-QA · Evidence-grounded multilingual NLP research demo")
