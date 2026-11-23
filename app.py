@@ -128,6 +128,45 @@ st.markdown(
       div[data-testid="stTabs"] button { font-weight: 650; }
       div[data-testid="stTabs"] [data-baseweb="tab-list"] { gap: 1.2rem; }
       div[data-testid="stForm"] { background: #fff; padding: 1rem 1.1rem .8rem; border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 8px 24px rgba(23,45,53,.035); }
+      .team-card {
+        height: 100%;
+        min-height: 230px;
+        box-sizing: border-box;
+        padding: 1.15rem;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: linear-gradient(160deg, #ffffff 0%, #f5f8f7 100%);
+      }
+      .team-number {
+        display: inline-grid;
+        place-items: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        margin-bottom: .9rem;
+        border-radius: 13px;
+        color: var(--teal-dark);
+        background: #e3f1ee;
+        font-size: .88rem;
+        font-weight: 800;
+      }
+      .team-name {
+        color: var(--ink);
+        font-size: 1.02rem;
+        font-weight: 750;
+        margin-bottom: .3rem;
+      }
+      .team-role {
+        color: var(--teal-dark);
+        font-size: .9rem;
+        font-weight: 700;
+        line-height: 1.35;
+        margin-bottom: .65rem;
+      }
+      .team-description {
+        color: var(--muted);
+        font-size: .88rem;
+        line-height: 1.5;
+      }
       @media (max-width: 700px) {
         [data-testid="stMainBlockContainer"] {
           padding-top: 1rem;
@@ -527,6 +566,47 @@ with about_tab:
         "- Evaluation protocol, benchmark snapshot, data card, and research notebook"
     )
     st.caption("The expanded corpus follows official source URLs documented in `data/sources.json`.")
+    st.markdown("### Meet the team")
+    st.write("Suggested responsibilities for a four-member project team:")
+    team_members = [
+        (
+            "01",
+            "Member 1",
+            "Project Lead & Research Coordinator",
+            "Sets the project goals, coordinates the research work, and brings the final report and presentation together.",
+        ),
+        (
+            "02",
+            "Member 2",
+            "NLP & Retrieval Engineer",
+            "Builds and compares BM25, character TF-IDF, LaBSE, and hybrid passage retrieval.",
+        ),
+        (
+            "03",
+            "Member 3",
+            "Data & Evaluation Lead",
+            "Maintains passages and QA annotations, runs evaluation, and reviews language-specific errors.",
+        ),
+        (
+            "04",
+            "Member 4",
+            "Web App & Documentation Lead",
+            "Improves the Streamlit experience and keeps setup instructions and the project demo reproducible.",
+        ),
+    ]
+    team_columns = st.columns(4)
+    for column, (number, name, role, description) in zip(team_columns, team_members):
+        with column:
+            st.markdown(
+                f'<div class="team-card">'
+                f'<div class="team-number">{number}</div>'
+                f'<div class="team-name">{name}</div>'
+                f'<div class="team-role">{role}</div>'
+                f'<div class="team-description">{description}</div>'
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+    st.caption("Replace Member 1–4 with your teammates’ names and adjust responsibilities to match their contributions.")
 
 st.markdown("---")
 st.caption("IndicRAG-QA · Evidence-grounded multilingual NLP research demo")
