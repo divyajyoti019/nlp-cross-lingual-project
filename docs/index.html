@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f3ed">
+  <meta name="description" content="IndicRAG-QA: an evidence-grounded question-answering research demo for English, Hindi, and Hinglish questions about Indian education policy.">
+  <title>IndicRAG-QA — Cross-lingual policy question answering</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172b2b;
+      --muted: #536766;
+      --paper: #f4f3ed;
+      --white: #fffefa;
+      --line: #d9dfd7;
+      --green: #176c54;
+      --green-dark: #0e4c3c;
+      --lime: #d4e96e;
+      --rust: #b9593e;
+      --serif: Georgia, "Times New Roman", serif;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.6;
+    }
+    a { color: var(--green-dark); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    a:hover { color: var(--rust); }
+    .wrap { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 24px;
+      min-height: 76px; border-bottom: 1px solid var(--line);
+    }
+    .brand { color: var(--ink); font-weight: 760; letter-spacing: -.04em; text-decoration: none; font-size: 1.15rem; }
+    .brand span { color: var(--green); }
+    nav { display: flex; gap: 24px; font-size: .9rem; }
+    nav a { color: var(--muted); text-decoration: none; }
+    .hero {
+      display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr);
+      align-items: center; gap: 60px; padding: 78px 0 70px;
+    }
+    .eyebrow { color: var(--green); font-size: .78rem; font-weight: 750; letter-spacing: .16em; text-transform: uppercase; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { max-width: 760px; margin: 14px 0 22px; font: 500 clamp(2.8rem, 6vw, 5.3rem)/.98 var(--serif); letter-spacing: -.055em; }
+    .lede { max-width: 660px; color: var(--muted); font-size: 1.12rem; }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+    .button { display: inline-flex; min-height: 46px; align-items: center; justify-content: center; padding: 10px 17px; border: 1px solid var(--green); border-radius: 4px; color: white; background: var(--green); font-size: .9rem; font-weight: 700; text-decoration: none; }
+    .button:hover { background: var(--green-dark); border-color: var(--green-dark); color: white; }
+    .button.secondary { background: transparent; color: var(--green-dark); }
+    .button.secondary:hover { background: #e8ece4; color: var(--green-dark); }
+    .example { background: var(--green-dark); color: #f7f5e9; padding: 28px; border-radius: 3px; box-shadow: 12px 12px 0 var(--lime); }
+    .example .label { color: var(--lime); font-size: .73rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+    .example blockquote { margin: 13px 0 22px; font: 1.18rem/1.45 var(--serif); }
+    .example .answer { border-top: 1px solid #557766; padding-top: 18px; font-size: .95rem; }
+    .example small { display: block; margin-top: 10px; color: #c4d0c7; }
+    .stats { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); }
+    .stat { padding: 23px 18px 23px 0; }
+    .stat + .stat { border-left: 1px solid var(--line); padding-left: 22px; }
+    .stat strong { display: block; font: 500 2.15rem/1.1 var(--serif); }
+    .stat span { display: block; margin-top: 7px; color: var(--muted); font-size: .88rem; }
+    section { padding: 76px 0; }
+    .section-head { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; align-items: end; margin-bottom: 34px; }
+    h2 { margin-bottom: 0; font: 500 clamp(2rem, 4vw, 3.2rem)/1.05 var(--serif); letter-spacing: -.04em; }
+    .section-head p { color: var(--muted); margin-bottom: 0; max-width: 500px; }
+    .methods { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--line); }
+    .method { padding: 22px 22px 10px 0; }
+    .method + .method { border-left: 1px solid var(--line); padding-left: 22px; }
+    .method h3 { margin-bottom: 7px; font-size: 1rem; }
+    .method p { color: var(--muted); margin-bottom: 0; font-size: .9rem; }
+    .evaluation { background: #e6ebe2; }
+    .results { display: grid; grid-template-columns: 1.1fr .9fr; gap: 54px; align-items: start; }
+    .results table { width: 100%; border-collapse: collapse; font-size: .92rem; background: var(--white); }
+    .results th, .results td { padding: 13px 14px; border-bottom: 1px solid var(--line); text-align: left; }
+    .results th { color: var(--muted); font-size: .76rem; letter-spacing: .08em; text-transform: uppercase; }
+    .results tr:last-child td { border-bottom: 0; }
+    .caveat { border-left: 3px solid var(--rust); padding-left: 18px; color: var(--muted); font-size: .94rem; }
+    .caveat strong { color: var(--ink); }
+    .run { background: var(--green-dark); color: #f7f5e9; }
+    .run h2 { max-width: 650px; }
+    .run p { color: #d5ded4; max-width: 680px; }
+    pre { overflow-x: auto; padding: 17px 20px; background: #092f26; color: #e8efdf; border: 1px solid #42685a; border-radius: 3px; font: .93rem/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .run .button { background: var(--lime); color: var(--green-dark); border-color: var(--lime); }
+    .run .button:hover { background: #e2f48f; }
+    .links { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .link-block { border-top: 1px solid var(--line); padding-top: 14px; }
+    .link-block a { font-weight: 720; }
+    .link-block p { margin: 6px 0 0; color: var(--muted); font-size: .88rem; }
+    footer { border-top: 1px solid var(--line); padding: 23px 0 30px; color: var(--muted); font-size: .82rem; }
+    footer .foot { display: flex; justify-content: space-between; gap: 20px; }
+    @media (max-width: 760px) {
+      .wrap { width: min(100% - 32px, 600px); }
+      .topbar { min-height: 64px; }
+      nav { display: none; }
+      .hero { grid-template-columns: 1fr; gap: 32px; padding: 54px 0; }
+      .example { max-width: 500px; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .stat:nth-child(3) { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); }
+      .stat:nth-child(4) { border-top: 1px solid var(--line); }
+      .section-head, .results { grid-template-columns: 1fr; gap: 20px; }
+      .methods { grid-template-columns: repeat(2, 1fr); }
+      .method:nth-child(3) { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); }
+      .method:nth-child(4) { border-top: 1px solid var(--line); }
+      .links { grid-template-columns: repeat(2, 1fr); }
+      section { padding: 58px 0; }
+      footer .foot { display: block; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <header class="wrap topbar">
+    <a class="brand" href="#top" aria-label="IndicRAG-QA home">Indic<span>RAG</span>-QA</a>
+    <nav aria-label="Main navigation">
+      <a href="#approach">Approach</a>
+      <a href="#evaluation">Evaluation</a>
+      <a href="#run">Run the app</a>
+      <a href="#resources">Resources</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="wrap hero" aria-labelledby="hero-title">
+      <div>
+        <div class="eyebrow">Cross-lingual question answering · Research demo</div>
+        <h1 id="hero-title">Policy answers with evidence attached.</h1>
+        <p class="lede">IndicRAG-QA searches National Education Policy 2020 passages for questions asked in English, Hindi, or Hinglish. It returns source evidence with each answer and can abstain when the match is weak.</p>
+        <div class="actions">
+          <a class="button" href="https://github.com/divyajyoti019/nlp-cross-lingual-project">View the source on GitHub</a>
+          <a class="button secondary" href="https://raw.githubusercontent.com/divyajyoti019/nlp-cross-lingual-project/main/IndicRAG-QA_Project_Presentation.pptx">Download the project presentation</a>
+        </div>
+      </div>
+      <aside class="example" aria-label="Example question and cited answer">
+        <div class="label">Example · Hinglish question</div>
+        <blockquote>“NEP ke according coding activities kis school stage me start hoti hain?”</blockquote>
+        <div class="answer">Coding activities are introduced in the Middle Stage.<small>Evidence: NEP 2020, section 4.25</small></div>
+      </aside>
+    </section>
+
+    <div class="wrap stats" aria-label="Project at a glance">
+      <div class="stat"><strong>30</strong><span>starter passages<br>15 English · 15 Hindi</span></div>
+      <div class="stat"><strong>45</strong><span>annotated questions<br>12 development · 33 test</span></div>
+      <div class="stat"><strong>3</strong><span>query groups<br>English · Hindi · Hinglish</span></div>
+      <div class="stat"><strong>4</strong><span>retrieval methods<br>lexical, character, dense, hybrid</span></div>
+    </div>
+
+    <section id="approach" class="wrap" aria-labelledby="approach-title">
+      <div class="section-head">
+        <h2 id="approach-title">A question becomes a traceable answer.</h2>
+        <p>The system ranks policy passages, checks the best score against a threshold, then selects an evidence sentence or abstains. Citations let readers inspect the retrieved text.</p>
+      </div>
+      <div class="methods">
+        <article class="method"><h3>BM25</h3><p>Ranks passages by query-word overlap. A fast lexical baseline.</p></article>
+        <article class="method"><h3>Character TF-IDF</h3><p>Compares character n-grams to handle spelling and word-form variation.</p></article>
+        <article class="method"><h3>LaBSE dense</h3><p>Uses multilingual sentence embeddings to find meaning across languages.</p></article>
+        <article class="method"><h3>Hybrid</h3><p>Combines normalized lexical matching with LaBSE similarity.</p></article>
+      </div>
+    </section>
+
+    <section id="evaluation" class="evaluation" aria-labelledby="evaluation-title">
+      <div class="wrap">
+        <div class="section-head">
+          <h2 id="evaluation-title">Small benchmark, measured carefully.</h2>
+          <p>Each method’s answerability threshold was selected on the 12-question development split and applied unchanged to the 33-question test split.</p>
+        </div>
+        <div class="results">
+          <table>
+            <thead><tr><th>Method</th><th>Answerability F1</th><th>Recall@5</th></tr></thead>
+            <tbody>
+              <tr><td>BM25</td><td>0.894</td><td>0.500</td></tr>
+              <tr><td>Character TF-IDF</td><td>1.000</td><td>0.500</td></tr>
+              <tr><td>LaBSE dense</td><td>0.773</td><td>0.896</td></tr>
+              <tr><td>Hybrid</td><td>0.810</td><td>0.604</td></tr>
+            </tbody>
+          </table>
+          <p class="caveat"><strong>How to read this:</strong> LaBSE retrieved the most annotated evidence in the top five, while character TF-IDF had the highest answerability F1 on this split. The benchmark covers only 30 starter passages and 33 test questions; these results do not establish general performance. The optional expanded corpus has not been evaluated against a matching test set.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="run" class="run" aria-labelledby="run-title">
+      <div class="wrap">
+        <div class="eyebrow" style="color:var(--lime)">Interactive Python application</div>
+        <h2 id="run-title">Run the research demo locally.</h2>
+        <p>This project page is hosted free with GitHub Pages. The interactive Streamlit app runs from the project repository; clone it, install the listed requirements, then start it from the repository folder.</p>
+        <pre><code>git clone https://github.com/divyajyoti019/nlp-cross-lingual-project.git
+cd nlp-cross-lingual-project
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+streamlit run app.py</code></pre>
+        <a class="button" href="https://github.com/divyajyoti019/nlp-cross-lingual-project">Open the repository</a>
+      </div>
+    </section>
+
+    <section id="resources" class="wrap" aria-labelledby="resources-title">
+      <div class="section-head">
+        <h2 id="resources-title">Project files and documentation.</h2>
+        <p>Review the methodology, evaluation protocol, benchmark limits, and source data before interpreting results.</p>
+      </div>
+      <div class="links">
+        <div class="link-block"><a href="https://github.com/divyajyoti019/nlp-cross-lingual-project/blob/main/docs/project-report.md">Project report</a><p>Methods, corpus, results, and limitations.</p></div>
+        <div class="link-block"><a href="https://github.com/divyajyoti019/nlp-cross-lingual-project/blob/main/docs/benchmark-results.md">Benchmark results</a><p>Full metric tables and reproduction commands.</p></div>
+        <div class="link-block"><a href="https://github.com/divyajyoti019/nlp-cross-lingual-project/blob/main/docs/evaluation.md">Evaluation protocol</a><p>Splits, measures, thresholds, and annotation rules.</p></div>
+        <div class="link-block"><a href="https://github.com/divyajyoti019/nlp-cross-lingual-project/blob/main/docs/data-card.md">Data card</a><p>Data sources, language coverage, and reuse notes.</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap foot">
+      <span>IndicRAG-QA · Evidence-grounded policy question answering</span>
+      <span>Research prototype. Consult the cited policy sources for authoritative interpretation.</span>
+    </div>
+  </footer>
+</body>
+</html>
