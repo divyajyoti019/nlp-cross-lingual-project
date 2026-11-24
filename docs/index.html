@@ -41,6 +41,7 @@
     .brand span { color: var(--green); }
     nav { display: flex; gap: 24px; font-size: .9rem; }
     nav a { color: var(--muted); text-decoration: none; }
+    nav a.live { color: var(--green); font-weight: 750; }
     .hero {
       display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr);
       align-items: center; gap: 60px; padding: 78px 0 70px;
@@ -119,7 +120,8 @@
     <nav aria-label="Main navigation">
       <a href="#approach">Approach</a>
       <a href="#evaluation">Evaluation</a>
-      <a href="#run">Run the app</a>
+      <a class="live" href="https://indicrag-policy.streamlit.app/">Live demo</a>
+      <a href="#run">Run locally</a>
       <a href="#resources">Resources</a>
     </nav>
   </header>
@@ -131,6 +133,7 @@
         <h1 id="hero-title">Policy answers with evidence attached.</h1>
         <p class="lede">IndicRAG-QA searches National Education Policy 2020 passages for questions asked in English, Hindi, or Hinglish. It returns source evidence with each answer and can abstain when the match is weak.</p>
         <div class="actions">
+          <a class="button" href="https://indicrag-policy.streamlit.app/">Open the interactive demo</a>
           <a class="button" href="https://github.com/divyajyoti019/nlp-cross-lingual-project">View the source on GitHub</a>
           <a class="button secondary" href="https://raw.githubusercontent.com/divyajyoti019/nlp-cross-lingual-project/main/IndicRAG-QA_Project_Presentation.pptx">Download the project presentation</a>
         </div>
@@ -186,8 +189,9 @@
     <section id="run" class="run" aria-labelledby="run-title">
       <div class="wrap">
         <div class="eyebrow" style="color:var(--lime)">Interactive Python application</div>
-        <h2 id="run-title">Run the research demo locally.</h2>
-        <p>This project page is hosted free with GitHub Pages. The interactive Streamlit app runs from the project repository; clone it, install the listed requirements, then start it from the repository folder.</p>
+        <h2 id="run-title">Try the app or run it locally.</h2>
+        <p>The interactive app is publicly hosted on Streamlit Community Cloud. Open it to ask questions and inspect citations, or use the commands below to run the same app from the source repository.</p>
+        <div class="actions"><a class="button" href="https://indicrag-policy.streamlit.app/">Open the live IndicRAG-QA app</a></div>
         <pre><code>git clone https://github.com/divyajyoti019/nlp-cross-lingual-project.git
 cd nlp-cross-lingual-project
 python3 -m venv .venv
